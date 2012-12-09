@@ -15,19 +15,11 @@ const char * obj_files [NUM_OBJ_FILES] = {"i_3d.obj", "donut.obj", "cube.obj"};
 indexed_face_set_t * ifs [NUM_OBJ_FILES];
 half_edge_structure_t * hes [NUM_OBJ_FILES];
 int cur_model = 2;
-
+int subdivides = 1;
 
 
 int main(int argc, char * argv[]) {
-
-    for (int i = 2; i < NUM_OBJ_FILES; i++) {
-        printf("\nBuilding %s data structures.\n", obj_files[i]);
-        ifs[i] = (indexed_face_set_t * )malloc(sizeof(indexed_face_set_t));
-        read_obj(ifs[i], obj_files[i]);
-        catmull_clark_subdivide(ifs[i], 1, 0);
-        //hes[i] = build_half_edge(ifs[i]);
-        //printf("There are %d edges in %s.\n", hes[i]->num_edges, obj_files[i]);
-    }
+    load_models();
 
     glutInit(&argc, (char**)argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
@@ -44,6 +36,18 @@ int main(int argc, char * argv[]) {
     return 0;
 }
 
+void free_models() {
+
+}
+
+void load_models() {
+    for (int i = 2; i < NUM_OBJ_FILES; i++) {
+        printf("\nBuilding %s data structures.\n", obj_files[i]);
+        ifs[i] = (indexed_face_set_t * )malloc(sizeof(indexed_face_set_t));
+        read_obj(ifs[i], obj_files[i]);
+        catmull_clark_subdivide(ifs[i], subdivides, 0);
+    }
+}
 
 void init(void) {
     glClearColor(0.,0.,0.,1.);
@@ -87,18 +91,19 @@ void keyboard(unsigned char key, int x, int y) {
         case 'd':
             glRotatef(-5.0, 0.0, 1.0, 0.0);
             break;
-        case '1':
-            cur_model = 0;
+        case '[':
+            subdivides <= 0 ? 0 : subdivides--;
+            free_models();
+            load_models();
             break;
-        case '2':
-            cur_model = 1;
+        case ']':
+            subdivides >= 5 ? 0 : subdivides++;
+            free_models();
+            load_models();
             break;
-        case '3':
-            cur_model = 2;
-            break;
-        case '4':
-            cur_model = 3;
-            break;
+    }
+    if (key > '0' && key < '1' + NUM_OBJ_FILES) {
+        cur_model = (int)(key - '1');
     }
 }
 
