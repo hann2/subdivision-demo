@@ -141,6 +141,7 @@ half_edge_structure_t * catmull_clark_subdivide(indexed_face_set_t * ifs, int it
 
     //set new faces
     ifs->num_faces = hes->num_edges*2;
+    free(hes);
     ifs->faces = new_faces;
     printf("Completed Catmull Clark Subdivision with %d faces, %d edges, %d vertices.\n", ifs->num_faces, ifs->num_faces*4, ifs->num_vertices);
 
@@ -348,9 +349,9 @@ void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
     change_verts_helper(ifs, hash_table, verts_touched, he->next, midpoints, flags);
     change_verts_helper(ifs, hash_table, verts_touched, he->opp, midpoints, flags);
 
-    key = he->end_vert;
+    unsigned long vert_key = he->end_vert;
 
-    if (!cfuhash_exists_data(verts_touched, &key, 4)) {
+    if (!cfuhash_exists_data(verts_touched, &vert_key, 4)) {
         //see wikipedia of catmull clark subdivision for calculating new vertices
         double face_avg [] = {0, 0, 0};
         double edge_avg [] = {0, 0, 0};
@@ -367,7 +368,7 @@ void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
                 printf("edge2_avg %lf\n", edge_avg[dimension]);
             }
             printf("\n\n");
-            cur_edge = cur_edge->next->opp;
+            cur_edge = cur_edge->opp->next;
             num_neighboring_faces++;
         }
 
@@ -386,7 +387,7 @@ void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
 
         //add vertex to verts_touched
         //dont care about value, just using verts_touched as a set
-        cfuhash_put_data(verts_touched, &key, 4, (void **)(0), 4, NULL);
+        cfuhash_put_data(verts_touched, &vert_key, 4, (void **)(0), 4, NULL);
     }
 }
 

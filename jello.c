@@ -21,6 +21,7 @@ int subdivides = 1;
 int main(int argc, char * argv[]) {
     load_models();
 
+    /*
     glutInit(&argc, (char**)argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutCreateWindow("JELLO");
@@ -32,7 +33,7 @@ int main(int argc, char * argv[]) {
     glutTimerFunc(100, update, 60);
     
     glutMainLoop();
-
+*/
     return 0;
 }
 
