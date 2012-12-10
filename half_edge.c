@@ -114,7 +114,8 @@ half_edge_structure_t * catmull_clark_subdivide(indexed_face_set_t * ifs, int it
 
     //create array for [num_vertices + num_faces + num_edges] vertices
     //copy in old vertices
-    ifs->vertices = (double **)realloc(ifs->vertices, (ifs->num_vertices + ifs->num_faces + hes->num_edges)*sizeof(double *));
+    //OH NO!
+    ifs->vertices = (double **)realloc(ifs->vertices, (ifs->num_vertices + ifs->num_faces + hes->num_edges + 1)*sizeof(double *));
 
     int * midpoints = calculate_midpoints(ifs);
 
@@ -315,7 +316,7 @@ void edge_points_helper(cfuhash_table_t * hash_table, cfuhash_table_t * edge_poi
                 (ifs->vertices[midpoints[he->left_face]][dimension] +
                 ifs->vertices[midpoints[he->opp->left_face]][dimension] +
                 ifs->vertices[he->end_vert][dimension] +
-                ifs->vertices[he->opp->end_vert][dimension])/2.;
+                ifs->vertices[he->opp->end_vert][dimension])/4.;
         }
 
         //put index in vertices into hash table
@@ -330,13 +331,23 @@ void change_old_vertices(indexed_face_set_t * ifs, half_edge_structure_t * hes, 
     cfuhash_table_t * hash_table = cfuhash_new_with_initial_size(hes->num_edges);
     cfuhash_table_t * verts_touched = cfuhash_new_with_initial_size(ifs->num_faces*3);
 
-    change_verts_helper(ifs, hash_table, verts_touched, hes->handle_edge, midpoints, flags);
+    double ** old_verts = (double **)calloc(ifs->num_vertices, sizeof(double *));
+    for (int vert = 1; vert < ifs->num_vertices; vert++) {
+        old_verts[vert] = (double *)calloc(3, sizeof(double));
+        for (int dimension = 0; dimension < 3; dimension ++) {
+            old_verts[vert][dimension] = ifs->vertices[vert][dimension];
+        }
+    }
+
+    change_verts_helper(ifs, old_verts, hash_table, verts_touched, hes->handle_edge, midpoints, flags);
+
+    //free old_verts
 
     cfuhash_destroy(hash_table);
     cfuhash_destroy(verts_touched);
 }
 
-void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table, cfuhash_table_t * verts_touched, half_edge_t * he, int * midpoints, int flags) {
+void change_verts_helper(indexed_face_set_t * ifs, double ** old_verts, cfuhash_table_t * hash_table, cfuhash_table_t * verts_touched, half_edge_t * he, int * midpoints, int flags) {
     unsigned long long key  = generate_key(he->left_face, match_corner(ifs, he->left_face, he->end_vert));
 
     if (cfuhash_exists_data(hash_table, &key, 8)) {
@@ -346,13 +357,14 @@ void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
     //dont care about value, just using hash_table as a set
     cfuhash_put_data(hash_table, &key, 8, (void **)(0), 4, NULL);
 
-    change_verts_helper(ifs, hash_table, verts_touched, he->next, midpoints, flags);
-    change_verts_helper(ifs, hash_table, verts_touched, he->opp, midpoints, flags);
+    change_verts_helper(ifs, old_verts, hash_table, verts_touched, he->next, midpoints, flags);
+    change_verts_helper(ifs, old_verts, hash_table, verts_touched, he->opp, midpoints, flags);
 
     unsigned long vert_key = he->end_vert;
 
     if (!cfuhash_exists_data(verts_touched, &vert_key, 4)) {
         //see wikipedia of catmull clark subdivision for calculating new vertices
+
         double face_avg [] = {0, 0, 0};
         double edge_avg [] = {0, 0, 0};
 
@@ -361,14 +373,16 @@ void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
         
         while (num_neighboring_faces == 0 || cur_edge != he) {
             for (int dimension = 0; dimension < 3; dimension++) {
-                face_avg[dimension] += ifs->vertices[midpoints[he->left_face]][dimension];
-                edge_avg[dimension] += ifs->vertices[he->end_vert][dimension];
-                printf("face_avg %lf  edge1_avg %lf  ", face_avg[dimension], edge_avg[dimension]);
-                edge_avg[dimension] += ifs->vertices[he->next->end_vert][dimension];
-                printf("edge2_avg %lf\n", edge_avg[dimension]);
+                face_avg[dimension] += ifs->vertices[midpoints[cur_edge->left_face]][dimension];
+                //printf("adding face %lf\n", ifs->vertices[midpoints[cur_edge->left_face]][dimension]);
+                edge_avg[dimension] += old_verts[cur_edge->end_vert][dimension];
+                //printf("adding edge %lf\n", old_verts[cur_edge->end_vert][dimension]);
+                edge_avg[dimension] += old_verts[cur_edge->opp->end_vert][dimension];
+                //printf("adding edge %lf\n", old_verts[cur_edge->opp->end_vert][dimension]);
             }
-            printf("\n\n");
-            cur_edge = cur_edge->opp->next;
+            //printf("\n\n");
+            assert(cur_edge->end_vert == he->end_vert);
+            cur_edge = cur_edge->next->opp;
             num_neighboring_faces++;
         }
 
@@ -378,11 +392,11 @@ void change_verts_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
             edge_avg[dimension] /= (num_neighboring_faces*2);
         }
 
-        printf("\nNew values for vertex %d.\n", he->end_vert);
+        //printf("\nNew values for vertex %d.\n", he->end_vert);
         for (int dimension = 0; dimension < 3; dimension++) {
-            double temp = ifs->vertices[he->end_vert][dimension];
+            //double temp = ifs->vertices[he->end_vert][dimension];
             ifs->vertices[he->end_vert][dimension] = (face_avg[dimension] + 2*edge_avg[dimension] + (num_neighboring_faces - 3)*ifs->vertices[he->end_vert][dimension])/num_neighboring_faces;
-            printf("%lf + 2*%lf + (%d-3)*%lf)/%d = %lf\n", face_avg[dimension], edge_avg[dimension], num_neighboring_faces, temp, num_neighboring_faces, ifs->vertices[he->end_vert][dimension]);
+            //printf("%lf + 2*%lf + (%d-3)*%lf)/%d = %lf\n", face_avg[dimension], edge_avg[dimension], num_neighboring_faces, temp, num_neighboring_faces, old_verts[he->end_vert][dimension]);
         }
 
         //add vertex to verts_touched

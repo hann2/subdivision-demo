@@ -14,7 +14,7 @@
 const char * obj_files [NUM_OBJ_FILES] = {"i_3d.obj", "donut.obj", "cube.obj"};
 indexed_face_set_t * ifs [NUM_OBJ_FILES];
 half_edge_structure_t * hes [NUM_OBJ_FILES];
-int cur_model = 2;
+int cur_model = 0;
 int subdivides = 1;
 
 
@@ -34,6 +34,7 @@ int main(int argc, char * argv[]) {
     
     glutMainLoop();
 */
+
     return 0;
 }
 
@@ -42,7 +43,7 @@ void free_models() {
 }
 
 void load_models() {
-    for (int i = 2; i < NUM_OBJ_FILES; i++) {
+    for (int i = 0; i < NUM_OBJ_FILES; i++) {
         printf("\nBuilding %s data structures.\n", obj_files[i]);
         ifs[i] = (indexed_face_set_t * )malloc(sizeof(indexed_face_set_t));
         read_obj(ifs[i], obj_files[i]);
