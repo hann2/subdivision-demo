@@ -15,13 +15,13 @@ const char * obj_files [NUM_OBJ_FILES] = {"i_3d.obj", "donut.obj", "cube.obj"};
 indexed_face_set_t * ifs [NUM_OBJ_FILES];
 half_edge_structure_t * hes [NUM_OBJ_FILES];
 int cur_model = 0;
-int subdivides = 1;
+int subdivides = 0;
 
 
 int main(int argc, char * argv[]) {
     load_models();
 
-    /*
+    
     glutInit(&argc, (char**)argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutCreateWindow("JELLO");
@@ -33,7 +33,7 @@ int main(int argc, char * argv[]) {
     glutTimerFunc(100, update, 60);
     
     glutMainLoop();
-*/
+
 
     return 0;
 }
@@ -80,7 +80,7 @@ void display(void) {
             
 
 void keyboard(unsigned char key, int x, int y) {
-    switch(key) {
+    switch (key) {
         case 'w':
             glRotatef(5.0, 1.0, 0.0, 0.0);
             break;

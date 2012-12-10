@@ -42,6 +42,7 @@ half_edge_t * add_vertex(indexed_face_set_t * ifs, cfuhash_table_t * hash_table,
 
     //get end_vert by going counter clockwise around face
     h->end_vert = get_corner(ifs, face, (corner+1)%degree);
+    assert(h->end_vert != 0);
     h->left_face = face;
 
     // add to dictionary, key is 64 bits
@@ -144,11 +145,12 @@ half_edge_structure_t * catmull_clark_subdivide(indexed_face_set_t * ifs, int it
     ifs->num_faces = hes->num_edges*2;
     free(hes);
     ifs->faces = new_faces;
-    printf("Completed Catmull Clark Subdivision with %d faces, %d edges, %d vertices.\n", ifs->num_faces, ifs->num_faces*4, ifs->num_vertices);
 
 
     if (iterations > 1) {
         return catmull_clark_subdivide(ifs, iterations-1, flags);
+    } else {
+        printf("Completed Catmull Clark Subdivision with %d faces, %d edges, %d vertices.\n", ifs->num_faces, ifs->num_faces*2, ifs->num_vertices);
     }
 
     return hes;
@@ -246,14 +248,14 @@ void free_half_edge(indexed_face_set_t * ifs, half_edge_structure_t * hes) {
 
 void free_half_edge_helper(indexed_face_set_t * ifs, cfuhash_table_t * hash_table, half_edge_t * he) {
     //printf("face: %d: (%d, %d, %d, %d)\n", he->left_face, ifs->faces[he->left_face].corners[0], ifs->faces[he->left_face].corners[1], ifs->faces[he->left_face].corners[2], ifs->faces[he->left_face].corners[3]);
-    unsigned long long key  = generate_key(he->left_face, match_corner(ifs, he->left_face, he->end_vert));
+    unsigned long key  = (unsigned long)he;
 
-    if (cfuhash_exists_data(hash_table, &key, 8)) {
+    if (cfuhash_exists_data(hash_table, &key, 4)) {
         return;
     }
 
     //dont care about value, just using hash_table as a set
-    cfuhash_put_data(hash_table, &key, 8, (void **)(0), 4, NULL);
+    cfuhash_put_data(hash_table, &key, 4, (void **)(0), 4, NULL);
 
     free_half_edge_helper(ifs, hash_table, he->next);
     free_half_edge_helper(ifs, hash_table, he->opp);
@@ -342,6 +344,10 @@ void change_old_vertices(indexed_face_set_t * ifs, half_edge_structure_t * hes, 
     change_verts_helper(ifs, old_verts, hash_table, verts_touched, hes->handle_edge, midpoints, flags);
 
     //free old_verts
+    for (int vert = 1; vert < ifs->num_vertices; vert++) {
+        free(old_verts[vert]);
+    }
+    free(old_verts);
 
     cfuhash_destroy(hash_table);
     cfuhash_destroy(verts_touched);
